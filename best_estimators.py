@@ -34,7 +34,7 @@ from track import audio_features
 
 from sklearn.metrics.pairwise import euclidean_distances
 
-from helloworld import MapPlaylists
+from helloworld import SpotifyHelper
 from playlist import Playlist
 
 
@@ -180,7 +180,7 @@ for name, algorithm in clustering_algorithms:
         print(name + str(c))
         p = p.df_to_playlist(con, name + str(c))
         
-        cp = MapPlaylists()
+        cp = SpotifyHelper()
         p_id = cp.create_playlist(p)
         file.write(p_id) 
         file.write("\n") 
@@ -213,7 +213,7 @@ if(False):
             p = Playlist()
             p = p.df_to_playlist(df, name + str(c))
             
-            cp = MapPlaylists()
+            cp = SpotifyHelper()
             p_id = cp.create_playlist(p)
             file.write(p_id) 
             file.write("\n") 

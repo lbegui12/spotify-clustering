@@ -18,7 +18,7 @@ from secret import spotify_secret
 import pandas as pd
 
 
-class MapPlaylists:
+class SpotifyHelper:
     
     def __init__(self):
         self.client_id = spotify_user_id
@@ -85,23 +85,16 @@ class MapPlaylists:
                 playlists = self.sp.next(playlists)
             else:
                 playlists = None
-        return response
     
 if __name__ == '__main__':
-    cp = MapPlaylists()
-    # p = cp.get_user_saved_tracks(limit=1066, verbose=False)
-    # print("%d tracks in the playlist" % p.count)
-    # data = p.playlist_to_df()
-    # print(data.head())
-    # data.to_csv("mySavedSongs.csv", index=False)
+    cp = SpotifyHelper()
+    p = cp.get_user_saved_tracks(limit=1066, verbose=False)
+    print("%d tracks in the playlist" % p.count)
+    data = p.playlist_to_df()
+    print(data.head())
+    data.to_csv("datasets\output\mySavedSongs.csv", index=False)
+    
+    
     to_remove = ["MiniBatchKMeans","AffinityPropagation", "_playlist", "Birch","MeanShift", "OPTICS","Agglo","Spectral"]
     response = cp.del_playlist_by_string(to_remove)
-# =============================================================================
-#       ## Del created playlists   
-#      with open("created_playlist_ids.txt","r") as file:
-#         lines = file.readlines()
-#         for playlist_id in lines:
-#             cp.del_playlist(playlist_id)
-#         
-# =============================================================================
     

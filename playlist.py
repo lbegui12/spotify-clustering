@@ -20,7 +20,7 @@ class Playlist:
         self.name = name
         hash_object = hashlib.sha1(name.encode())
         hex_dig = hash_object.hexdigest()
-        print("Playlist '{}' - {}".format(name, hex_dig))
+        # print("Playlist '{}' - {}".format(name, hex_dig))
         self.id = hex_dig
         
     def add_track(self, track):
