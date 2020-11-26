@@ -47,8 +47,8 @@ info_features = ['id', 'name','artist','year']
 data = analyse_refactor.open_csv("mySavedSongs.csv")
 all_data = analyse_refactor.open_csv("data.csv")
 
-scale_method = "MaxAbs"   # RobustScaler Standard MaxAbs QuantileTransformer PowerTransformer
-normalize = True
+scale_method = "MinMax"   # RobustScaler Standard MaxAbs QuantileTransformer PowerTransformer MinMax
+normalize = False
 norm = "l1"         # "l1" "max"
 
 X = analyse_refactor.scale_numeric(data, method=scale_method, normalize = normalize, norm=norm)
@@ -73,6 +73,8 @@ X = pca_df[cols].copy()
 
 all_X_pca, pca = analyse_refactor.perform_pca(all_X, n=len(audio_features), pca = pca)
 all_X_pca = all_X_pca[cols]
+
+
 # =============================================================================
 # Define best algo
 # =============================================================================
@@ -106,16 +108,15 @@ optics = OPTICS(algorithm='auto', cluster_method='xi', eps=None, leaf_size=30,
        max_eps=np.inf, metric='cosine', metric_params=None, min_cluster_size=0.05,
        min_samples=0.1, n_jobs=None, p=2, predecessor_correction=True, xi=0.0)
 
-#birch = Birch(branching_factor=50, compute_labels=True, copy=True, n_clusters=2, threshold=0.5)
 birch = Birch(branching_factor=50, compute_labels=True, copy=True, n_clusters=7, threshold=0.5)
 
 clustering_algorithms = (
         ('MiniBatchKMeans', mbkm),
         ('AffinityPropagation', ap),
-        #('MeanShift', ms),
+        ('MeanShift', ms),
         ('SpectralClustering', sc),
         ('AgglomerativeClustering', ac),
-        #('DBSCAN', dbscan),
+        ('DBSCAN', dbscan),
         ('OPTICS', optics),
         ('Birch', birch)
     )

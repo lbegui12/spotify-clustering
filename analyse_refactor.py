@@ -51,6 +51,8 @@ def scale_numeric(df, method="MinMax", normalize = False, norm="l2"):
     # Transform the data according to the choosen method
     if method == "Standard":
         X = StandardScaler().fit_transform(num_df)
+    elif method == "MinMax":
+        X = MinMaxScaler()().fit_transform(num_df)
     elif method == "MaxAbs":
         X = MaxAbsScaler().fit_transform(num_df)
     elif method == "RobustScaler":
@@ -79,23 +81,6 @@ def perform_pca(X, n=3, whiten=True, pca=None):
     pca_df = pd.DataFrame(data = principalComponents, columns = pca_col)
     return (pca_df, pca)
 
-def perform_kmean(df, features, model="KMeans", n=3):
-    clf = KMeans(n_clusters=n)
-    if model == "DBSCAN":
-        clf = DBSCAN(eps=0.7, min_samples=2)
-    elif model == "OPTICS":
-        clf = OPTICS(min_samples=2)
-    elif model == "AgglomerativeClustering":
-        clf = AgglomerativeClustering(linkage="ward") 
-    elif model == "Birch":
-        clf = Birch(n_clusters=3) 
-    
-    clf.fit(df[features])
-    return (clf.labels_, metrics.silhouette_score(df[features], clf.labels_, metric='euclidean'), clf.cluster_centers_)
-
-
-
-
 def cv_silhouette_scorer(estimator, X):
     estimator.fit(X)
     cluster_labels = estimator.labels_
@@ -104,25 +89,18 @@ def cv_silhouette_scorer(estimator, X):
     if num_labels == 1 or num_labels == num_samples:
         return -1
     else:
-        score = silhouette_score(X, cluster_labels)         # bad -1 - 1 good
-        chs = calinski_harabasz_score(X, cluster_labels)    # higher is better  
-        dhs = davies_bouldin_score(X, cluster_labels)       # good 0 - 1 bad
+        score = silhouette_score(X, cluster_labels, metric='euclidean')     # bad -1 - 1 good
+        chs = calinski_harabasz_score(X, cluster_labels)                    # higher is better  
+        dhs = davies_bouldin_score(X, cluster_labels)                       # good 0 - 1 bad
         print("{} - {} - {}".format(score, chs, dhs))
         
         return score
-    
-    # ==========  MIX DE CA CA POURRAIT ETRE COOL !!!!!!! =========================
-    #     score = silhouette_score(X[cols], y_pred, metric='euclidean')   # bad -1 - 1 good
-    #     chs = calinski_harabasz_score(X[cols], y_pred)                  # higher is better  
-    #     dhs = davies_bouldin_score(X[cols], y_pred)                     ## good 0 - 1 bad
-    # =============================================================================
-
+  
 
 # =============================================================================
 # Open csv file
 # =============================================================================
 data = open_csv("mySavedSongs.csv")
-
 
 info_features = ['id', 'name','artist','year']
 
@@ -230,36 +208,8 @@ def process(df, scaler="RobustScaler", pca_rep_offset=0.8, plot=False):
     final_df.to_csv("clusteredSongs.csv")
     
     return (final_df, pca)
-    
-    
-    
-    # n_max = scores.index(max(scores))
-    # print("Best score found for {} clusters (Silhouette={})".format(n_max+2, scores[n_max]))
-
-    # # =============================================================================
-    # # PCA for visualization || pairwise feature !
-    # # =============================================================================
-    # #fig = px.scatter_3d(X, x='PCA_1', y='PCA_2', z='PCA_3', color='KMeans_3')
-    # #fig.show()
-    
-    
-    
-    
-# transform method
-    # "Standard":
-    # "MaxAbs"
-    # "RobustScaler":
-    # "QuantileTransformer":
-    # "PowerTransformer":
-# normalisé ou pas
-# PCA ou ((random projection & feature agglomeration)) ? & Offset !
-# methode de clustering avec pour chaque des param diff !!! ouaiiii
 
 
-
-
-
-# stuff to run always here such as class/def
 def main():
     process(data, scaler="RobustScaler", pca_rep_offset=0.7, plot=True)
     #pass
