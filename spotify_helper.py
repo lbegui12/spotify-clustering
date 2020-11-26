@@ -74,6 +74,8 @@ class SpotifyHelper:
     def del_playlist_by_string(self, strings):       # SUPPR LES PLAYLISTS
         user_id = self.sp.me()['id']
         playlists = self.sp.user_playlists(user_id, limit=50, offset=0)
+        
+        # go through the user playlists
         while playlists:
             for i, playlist in enumerate(playlists['items']):
                 print("%4d %s %s" % (i + 1 + playlists['offset'], playlist['id'],  playlist['name']))
@@ -81,7 +83,6 @@ class SpotifyHelper:
                     if s in playlist['name']:
                         self.del_playlist(playlist['id'])
             if playlists['next']:
-                print("getting next 50")
                 playlists = self.sp.next(playlists)
             else:
                 playlists = None
