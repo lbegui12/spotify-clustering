@@ -52,7 +52,7 @@ def scale_numeric(df, method="MinMax", normalize = False, norm="l2"):
     if method == "Standard":
         X = StandardScaler().fit_transform(num_df)
     elif method == "MinMax":
-        X = MinMaxScaler()().fit_transform(num_df)
+        X = MinMaxScaler().fit_transform(num_df)
     elif method == "MaxAbs":
         X = MaxAbsScaler().fit_transform(num_df)
     elif method == "RobustScaler":
@@ -61,8 +61,6 @@ def scale_numeric(df, method="MinMax", normalize = False, norm="l2"):
         X = QuantileTransformer().fit_transform(num_df)
     elif method == "PowerTransformer":
         X = PowerTransformer(standardize=False).fit_transform(num_df)
-    else:
-        X = MinMaxScaler().fit_transform(num_df)
     
     if normalize:
         X = preprocessing.normalize(X, norm=norm)   # normalise data if asked
@@ -97,12 +95,7 @@ def cv_silhouette_scorer(estimator, X):
         return score
   
 
-# =============================================================================
-# Open csv file
-# =============================================================================
-data = open_csv("mySavedSongs.csv")
 
-info_features = ['id', 'name','artist','year']
 
 
 # =============================================================================
@@ -211,7 +204,10 @@ def process(df, scaler="RobustScaler", pca_rep_offset=0.8, plot=False):
 
 
 def main():
-    process(data, scaler="RobustScaler", pca_rep_offset=0.7, plot=True)
+    data = open_csv("datasets\output\mySavedSongs.csv")
+    
+    info_features = ['id', 'name','artist','year']
+    process(data, scaler="MinMax", pca_rep_offset=0.9, plot=True)
     #pass
 
 if __name__ == "__main__":

@@ -17,8 +17,8 @@ def open_csv(path):
     return df
 
 
-saved_songs = open_csv("mySavedSongs.csv")
-data = open_csv("data.csv")
+saved_songs = open_csv("datasets\output\mySavedSongs.csv")
+data = open_csv("datasets\data.csv")
 
 print(saved_songs.columns)
 print(data.columns)
