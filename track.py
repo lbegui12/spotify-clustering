@@ -15,9 +15,10 @@ Created on Wed Sep 30 17:26:06 2020
     
     """
     
-audio_features = ['danceability', 'energy', 'key', 'loudness', 
-                'mode', 'speechiness', 'acousticness', 
+audio_features = ['danceability', 'energy', 'loudness',
+                  'speechiness', 'acousticness', 
                 'instrumentalness', 'liveness', 'valence', 'tempo']
+
 features = ['name', 'id', 'artist', 'year', 'popularity']
 
 class Track:
@@ -41,7 +42,7 @@ class Track:
     def to_dict(self):
         d = {
             'id' : self.id,
-            'artist' : self.artist,
+            'artists' : self.artist,
             'name' : self.name,
             'year' : self.year,
             'popularity': self.popularity

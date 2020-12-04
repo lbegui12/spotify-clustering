@@ -87,12 +87,12 @@ def cv_silhouette_scorer(estimator, X):
     if num_labels == 1 or num_labels == num_samples:
         return -1
     else:
-        score = silhouette_score(X, cluster_labels, metric='euclidean')     # bad -1 - 1 good
+        silhouette = silhouette_score(X, cluster_labels, metric='euclidean')     # bad -1 - 1 good
         chs = calinski_harabasz_score(X, cluster_labels)                    # higher is better  
         dhs = davies_bouldin_score(X, cluster_labels)                       # good 0 - 1 bad
         print("{} - {} - {}".format(score, chs, dhs))
         
-        return score
+        return silhouette*chs/dhs
   
 
 
@@ -101,7 +101,7 @@ def cv_silhouette_scorer(estimator, X):
 # =============================================================================
 # All the process in one place 
 # =============================================================================
-def process(df, scaler="RobustScaler", pca_rep_offset=0.8, plot=False):
+def process(df, scaler="MinMax", pca_rep_offset=0.9, plot=False):
     data = df.copy()
     # =============================================================================
     # First off : Rescale the data
@@ -132,13 +132,13 @@ def process(df, scaler="RobustScaler", pca_rep_offset=0.8, plot=False):
     # =============================================================================
     clustering_params = {
         ("KMeans", MiniBatchKMeans()) : {
-            "n_clusters" : range(2,20)
+            "n_clusters" : range(2,50)
         },
         
         ("AffinityPropagation", AffinityPropagation()) : {
               #"affinity": ["euclidean", "precomputed"], 
-              "preference": range(-50,-240, -10),     # -240 -220 -50
-              "damping" : np.linspace(0.5,1,10)       # [0.5-1]
+              "preference": range(-5,-500, -10),     # -240 -220 -50
+              "damping" : np.linspace(0.5,1,100)       # [0.5-1]
         },
         
         # bandwidth = estimate_bandwidth(X, quantile=0.2, n_samples=500)
@@ -149,12 +149,12 @@ def process(df, scaler="RobustScaler", pca_rep_offset=0.8, plot=False):
         },    
         
         ("SpectralClustering", SpectralClustering()) : {
-            "n_clusters" : range(2,20)},
+            "n_clusters" : range(2,50)},
         
         ("AgglomerativeClustering", AgglomerativeClustering()) : {   # If linkage is “ward”, only “euclidean” is accepted
             "linkage" : ["ward", "complete", "average", "single"],
             "affinity" : ["euclidean", "cityblock", "cosine"],
-            "n_clusters" : range(2,20)
+            "n_clusters" : range(2,50)
         },
         
         ("DBSCAN", DBSCAN()) : {
@@ -163,14 +163,14 @@ def process(df, scaler="RobustScaler", pca_rep_offset=0.8, plot=False):
         },
         
         ("OPTICS", OPTICS()) : {
-            "min_samples" : np.linspace(0,1,20),          # or float [0-1]
+            "min_samples" : np.linspace(0,1,50),          # or float [0-1]
             "metric" : ["cityblock", "cosine", "euclidean", "manhattan"],
-            "xi" : np.linspace(0,1,50),                # [0-1]
-            "min_cluster_size" : np.linspace(0,1,50)   # [0-1]
+            "xi" : np.linspace(0,1,100),                # [0-1]
+            #"min_cluster_size" : np.linspace(0,1,50)   # [0-1]
         },
         
         ("Birch", Birch()) : {
-            "n_clusters" : range(2,20)
+            "n_clusters" : range(2,50)
         }
     }
     
@@ -182,7 +182,7 @@ def process(df, scaler="RobustScaler", pca_rep_offset=0.8, plot=False):
         param_dict = value
         cv = [(slice(None), slice(None))]
         gs = GridSearchCV(estimator=algorithm, param_grid=param_dict, 
-                  scoring=cv_silhouette_scorer, cv=cv, n_jobs=-1)
+                  scoring=cv_silhouette_scorer, cv=cv, n_jobs=-1, verbose=1)
         gs.fit(X)
         
         # get reuslt as a df
@@ -197,6 +197,7 @@ def process(df, scaler="RobustScaler", pca_rep_offset=0.8, plot=False):
         print("Took {} time".format(t1-t0))
     
     print(clustering_params)
+    info_features = ['id', 'name','artists','year']
     final_df = pd.concat([data[info_features], df[features], X], axis=1)    
     final_df.to_csv("clusteredSongs.csv")
     
@@ -206,7 +207,7 @@ def process(df, scaler="RobustScaler", pca_rep_offset=0.8, plot=False):
 def main():
     data = open_csv("datasets\output\mySavedSongs.csv")
     
-    info_features = ['id', 'name','artist','year']
+    
     process(data, scaler="MinMax", pca_rep_offset=0.9, plot=True)
     #pass
 

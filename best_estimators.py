@@ -34,28 +34,31 @@ from track import audio_features
 
 from sklearn.metrics.pairwise import euclidean_distances
 
-from helloworld import SpotifyHelper
+from spotify_helper import SpotifyHelper
 from playlist import Playlist
 
+import seaborn as sns
 
 
-info_features = ['id', 'name','artist','year']
+info_features = ['id', 'name','artists','year']
 
 # =============================================================================
 # Prep data
 # =============================================================================
-data = analyse_refactor.open_csv("mySavedSongs.csv")
-all_data = analyse_refactor.open_csv("data.csv")
+data = analyse_refactor.open_csv("datasets\output\mySavedSongs.csv")
+all_data = analyse_refactor.open_csv("datasets\data.csv")
 
-scale_method = "MinMax"   # RobustScaler Standard MaxAbs QuantileTransformer PowerTransformer MinMax
+scale_method = "RobustScaler"   # RobustScaler Standard MaxAbs QuantileTransformer PowerTransformer MinMax
 normalize = False
 norm = "l1"         # "l1" "max"
 
-X = analyse_refactor.scale_numeric(data, method=scale_method, normalize = normalize, norm=norm)
+scaled_audio_features = ["scaled" + s for s in audio_features]
+
+data[audio_features] = analyse_refactor.scale_numeric(data[audio_features], method=scale_method, normalize = normalize, norm=norm)
 all_X = analyse_refactor.scale_numeric(all_data[audio_features], method=scale_method , normalize = normalize, norm=norm)
-features = list(X.columns) 
+features = list(data[audio_features].columns) 
 print(features)
-pca_df, pca = analyse_refactor.perform_pca(X, len(features))
+pca_df, pca = analyse_refactor.perform_pca(data[audio_features], len(features))
 var_ratio = pca.explained_variance_ratio_
 
 # Select the number of componants based on an offset
@@ -80,51 +83,51 @@ all_X_pca = all_X_pca[cols]
 # =============================================================================
 mbkm = MiniBatchKMeans(batch_size=100, compute_labels=True, init='k-means++',
                 init_size=None, max_iter=100, max_no_improvement=10,
-                #n_clusters=5, n_init=3, random_state=None,
-                n_clusters=7, n_init=3, random_state=None,
+                n_clusters=8, n_init=3, random_state=None,
                 reassignment_ratio=0.01, tol=0.0, verbose=0)
 
-ap = AffinityPropagation(affinity='euclidean', convergence_iter=15, copy=True,
-                    damping=0.7, max_iter=200, preference=-235, verbose=False)
+ap = AffinityPropagation(affinity='euclidean', convergence_iter=35, copy=True,
+                    damping=0.803030303030303, max_iter=200, preference=-245,
+                    verbose=False)
 
 ms = MeanShift(bandwidth=None, bin_seeding=False, cluster_all=True, max_iter=300,
-          min_bin_freq=1, n_jobs=None, seeds=None) 
+          min_bin_freq=1, n_jobs=None, seeds=None)
 
 sc = SpectralClustering(affinity='rbf', assign_labels='kmeans', coef0=1, degree=3,
                    eigen_solver=None, eigen_tol=0.0, gamma=1.0,
-                   kernel_params=None, n_clusters=3, n_components=None,
+                   kernel_params=None, n_clusters=7, n_components=None,
                    n_init=10, n_jobs=None, n_neighbors=10, random_state=None)
 
-ac = AgglomerativeClustering(affinity='cityblock', compute_full_tree='auto',
+ac = AgglomerativeClustering(affinity='cosine', compute_full_tree='auto',
                         connectivity=None, distance_threshold=None,
-                        #linkage='average', memory=None, n_clusters=2)
-                        linkage='average', memory=None, n_clusters=7)
+                        linkage='average', memory=None, n_clusters=2)
 
-dbscan = DBSCAN(algorithm='auto', eps=2.7052631578947373, leaf_size=30,
-       metric='euclidean', metric_params=None, min_samples=85, n_jobs=None,
+dbscan = DBSCAN(algorithm='auto', eps=2.7263157894736842, leaf_size=30,
+       metric='euclidean', metric_params=None, min_samples=2, n_jobs=None,
        p=None)
 
 optics = OPTICS(algorithm='auto', cluster_method='xi', eps=None, leaf_size=30,
-       max_eps=np.inf, metric='cosine', metric_params=None, min_cluster_size=0.05,
-       min_samples=0.1, n_jobs=None, p=2, predecessor_correction=True, xi=0.0)
+       max_eps=np.inf, metric='euclidean', metric_params=None,
+       min_cluster_size=None, min_samples=0.10526315789473684, n_jobs=None, p=2,
+       predecessor_correction=True, xi=0.0)
 
-birch = Birch(branching_factor=50, compute_labels=True, copy=True, n_clusters=7, threshold=0.5)
+birch = Birch(branching_factor=50, compute_labels=True, copy=True, n_clusters=6,
+      threshold=0.5)
+
 
 clustering_algorithms = (
         ('MiniBatchKMeans', mbkm),
         ('AffinityPropagation', ap),
-        ('MeanShift', ms),
+        #('MeanShift', ms),
         ('SpectralClustering', sc),
         ('AgglomerativeClustering', ac),
         ('DBSCAN', dbscan),
-        ('OPTICS', optics),
-        ('Birch', birch)
+        #('OPTICS', optics),
+        #('Birch', birch)
     )
 
 centers = {}
-file = open("created_playlist_ids.txt","a+")
 for name, algorithm in clustering_algorithms:
-    print(name.upper())
     # catch warnings related to kneighbors_graph
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="the number of connected components of the connectivity matrix is [0-9]{1,2} > 1. Completing it to avoid stopping the tree early.", category=UserWarning)
@@ -139,74 +142,54 @@ for name, algorithm in clustering_algorithms:
     
     # Get some sense of how good the clustering is
     silhouette = silhouette_score(X[cols], y_pred, metric='euclidean')  # bad -1 - 1 good
-    chs = calinski_harabasz_score(X[cols], y_pred)                      # higher is better  
-    dhs = davies_bouldin_score(X[cols], y_pred)                         # good 0 - 1 bad
+    chs = calinski_harabasz_score(X[cols], y_pred)                      # higher is better
+    # a lower Davies-Bouldin index relates to a model with better separation between the clusters.
+    dhs = davies_bouldin_score(X[cols], y_pred)                         # good 0 - 1 bad 
     score = silhouette*chs/dhs
-    print("{:.3f} - {:.3f} - {:.3f} = {} : [{} clusters] {}".format(silhouette, chs, dhs,score, len(pd.Series(y_pred).unique()), name))
+    print("{:.3f} * {:.3f} / {:.3f} = {} : [{} clusters] {}".format(silhouette, chs, dhs,score, len(pd.Series(y_pred).unique()), name))
     
-    # append the clustering result to mySavedSongs
-    X[name] = pd.Series(y_pred)
-    
-    # Find clusters centers and assign each song from data.csv to a cluster (keeping track of its distance to the cluster center)
-    cluster_centers = []
-    s_col = name + "_dist_to_center"
-    for c in X.loc[:,name].unique():
-        cluster_center = X[ X[name] == c].loc[:,cols].mean(axis=0)
-        cluster_centers.append(cluster_center)    
-    
-    d = euclidean_distances(all_X_pca[cols], np.array(cluster_centers)) 
-    
-    all_X_pca[name] = d.argmin(axis=1)
-    all_X_pca[s_col] = pd.Series(d.min(axis=1))
-    
-    # Using cluster centers may not be a good idea for concave clusters
-    # Let's select X points from the cluster randomly and keep the Y closest points
-    n_anchor_songs = 3
-    for c in X.loc[:,name].unique():
-        # choose a random song from each cluster (random or by popularity)
-        ddd = pd.concat([data, X], axis=1)
-        clustered_songs = ddd[ ddd[name] == c].sort_values(by="popularity", ascending=False)
-        samples = clustered_songs.loc[:,cols].sample(min(n_anchor_songs,clustered_songs.shape[0]))
-        d = euclidean_distances(all_X_pca[cols], np.array(samples))
+    if score>10:
+        # append the clustering result to mySavedSongs
+        X[name] = pd.Series(y_pred)
         
-        d_df = pd.DataFrame(data=d, columns=[str(i) for i in range(1,min(n_anchor_songs,clustered_songs.shape[0])+1)])
-        close_songs = pd.concat([all_data, d_df], axis=1).drop_duplicates()
-        
-        con = pd.DataFrame()
-        for by in [str(i) for i in range(1,min(n_anchor_songs,clustered_songs.shape[0])+1)]:
-            c1 = close_songs.sort_values(by=by).loc[:,["id", "name","artists"]].head(5)
-            con=pd.concat([con,c1], axis=0).drop_duplicates()
-        
-        p = Playlist()
-        print(name + str(c))
-        p = p.df_to_playlist(con, name + str(c))
-        
-        cp = SpotifyHelper()
-        p_id = cp.create_playlist(p)
-        file.write(p_id) 
-        file.write("\n") 
+        for c in X.loc[:,name].unique():
+            # choose a random song from each cluster (random or by popularity)
+            dd = pd.concat([data, X], axis=1)
+            
+            clustered_songs = dd[ dd[name] == c].sort_values(by="popularity", ascending=False)
+            
+            if(False):
+                fig = plt.figure()
+                ax = sns.violinplot(data=clustered_songs[audio_features])
+                ax.set_title(scale_method + "_" + name + "_" + str(c))
+            
+            
+            p = Playlist()
+            #print(name + str(c))
+            p = p.df_to_playlist(clustered_songs.sample(min(25,clustered_songs.shape[0])), scale_method + "_" + name + "_" + str(c))
+            
+            cp = SpotifyHelper()
+            p_id = cp.create_playlist(p)
+    
+        plot = False    
+        if(plot):    
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(X["PCA_1"], X["PCA_2"], X["PCA_3"], c = X.loc[:,name], marker=",") 
+            ax.set_xlabel('PCA_1')
+            ax.set_ylabel('PCA_2')
+            ax.set_zlabel('PCA_3')
+            ax.set_title(name)
 
-    plot = True    
-    if(plot):    
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(X["PCA_1"], X["PCA_2"], X["PCA_3"], c = X.loc[:,name], marker=",") 
-        ax.set_xlabel('PCA_1')
-        ax.set_ylabel('PCA_2')
-        ax.set_zlabel('PCA_3')
-        ax.set_title(name)
-        
-file.close()
     
 final_df = pd.concat([data[info_features], data[features], X], axis=1)    
-final_df.to_csv("clusteredSongs_best_estimator.csv")
+final_df.to_csv("datasets\output\mySavedSong_clustered_by_best_estimator.csv")
 
 all_final_df = pd.concat([all_data, all_X_pca], axis=1)    
 #all_final_df.to_csv("all_clusteredSongs_best_estimator.csv")
 
 
 if(False):
-    file = open("created_playlist_ids.txt","w")
     for name in ["AffinityPropagation", "DBSCAN", "Birch"]:
         s_col = name + "_dist_to_center"
         for c in all_X_pca[name].unique():

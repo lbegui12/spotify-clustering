@@ -89,13 +89,13 @@ class SpotifyHelper:
     
 if __name__ == '__main__':
     cp = SpotifyHelper()
-    p = cp.get_user_saved_tracks(limit=1066, verbose=False)
-    print("%d tracks in the playlist" % p.count)
-    data = p.playlist_to_df()
-    print(data.head())
-    data.to_csv("datasets\output\mySavedSongs.csv", index=False)
-    
-    
-    to_remove = ["MiniBatchKMeans","AffinityPropagation", "_playlist", "Birch","MeanShift", "OPTICS","Agglo","Spectral"]
+
+    #p = cp.get_user_saved_tracks(limit=1066, verbose=False)
+    #print("%d tracks in the playlist" % p.count)
+    #data = p.playlist_to_df()
+    #print(data.head())
+    #data.to_csv("datasets\output\mySavedSongs.csv", index=False)
+ 
+    to_remove = ["MiniBatchKMeans","AffinityPropagation", "_playlist", "Birch","MeanShift", "OPTICS","Agglo","Spectral","DBSCAN"]
     response = cp.del_playlist_by_string(to_remove)
     
