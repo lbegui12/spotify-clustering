@@ -1,5 +1,7 @@
 secret.py
-
+datasets/output/clusteredSongs_best_estimator.csv
+datasets/output/mySavedSong_clustered_by_best_estimator.csv
+datasets/output/mySavedSongs.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
