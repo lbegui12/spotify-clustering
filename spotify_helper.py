@@ -4,6 +4,7 @@ Created on Wed Sep 30 14:46:53 2020
 
 @author: Louis
 """
+import sys
 
 import spotipy    # la librairie pour manipuler l'api spotify
 from spotipy.oauth2 import SpotifyOAuth
@@ -57,11 +58,12 @@ class SpotifyHelper:
             return None
         
     def create_playlist(self, _playlist):
-        user_id = self.sp.me()['id']
-        playlist= self.sp.user_playlist_create(user_id, name=_playlist.name)
-        playlist_id= str(playlist['id'])
         
+        playlist_id = "-1"
         try:
+            user_id = self.sp.me()['id']
+            playlist= self.sp.user_playlist_create(user_id, name=_playlist.name)
+            playlist_id= str(playlist['id'])
             self.sp.playlist_add_items(playlist_id, [track.id for track in _playlist.tracks])
         except:
             print("Error while adding items to playlist {}".format(_playlist.name))
@@ -87,7 +89,7 @@ class SpotifyHelper:
             else:
                 playlists = None
     
-if __name__ == '__main__':
+def main(args=None):
     cp = SpotifyHelper()
 
     #p = cp.get_user_saved_tracks(limit=1066, verbose=False)
@@ -96,6 +98,8 @@ if __name__ == '__main__':
     #print(data.head())
     #data.to_csv("datasets\output\mySavedSongs.csv", index=False)
  
-    to_remove = ["MiniBatchKMeans","AffinityPropagation", "_playlist", "Birch","MeanShift", "OPTICS","Agglo","Spectral","DBSCAN"]
+    to_remove = ["MiniBatchKMeans","AffinityPropagation", "Birch" ,"MeanShift", "OPTICS","Agglo","Spectral","DBSCAN"]
     response = cp.del_playlist_by_string(to_remove)
-    
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

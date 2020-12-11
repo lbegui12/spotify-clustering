@@ -2,7 +2,6 @@ import time
 
 import pandas as pd
 
-from sklearn.cluster import KMeans
 from sklearn.cluster import Birch
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import OPTICS
@@ -11,6 +10,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import AffinityPropagation
 from sklearn.cluster import MeanShift
 from sklearn.cluster import SpectralClustering
+from sklearn.cluster import estimate_bandwidth
 
 
 from sklearn.preprocessing import MinMaxScaler
@@ -24,7 +24,6 @@ from sklearn import preprocessing
 
 from sklearn.decomposition import PCA
 import numpy as np
-from sklearn import metrics
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import silhouette_score
@@ -44,9 +43,9 @@ def open_csv(path):
     return df
 
 
-def scale_numeric(df, method="MinMax", normalize = False, norm="l2"):
+def scale_numeric(df, method="MinMax", normalize = False, norm="l2", features=audio_features):
     # Only keep numerical values
-    num_df = df[audio_features].select_dtypes(include='number')
+    num_df = df[features].select_dtypes(include='number')
     
     # Transform the data according to the choosen method
     if method == "Standard":
@@ -65,7 +64,7 @@ def scale_numeric(df, method="MinMax", normalize = False, norm="l2"):
     if normalize:
         X = preprocessing.normalize(X, norm=norm)   # normalise data if asked
         
-    return pd.DataFrame(data = X, columns = audio_features)
+    return pd.DataFrame(data = X, columns = features)
 
 
 def perform_pca(X, n=3, whiten=True, pca=None):
@@ -118,7 +117,7 @@ def process(df, scaler="MinMax", pca_rep_offset=0.9, plot=False):
     # Select the number of componants based on an offset
     i=0
     cum_ratio = 0
-    while(cum_ratio < pca_rep_offset):
+    while(cum_ratio < pca_rep_offset and i<len(var_ratio)):
         cum_ratio+=var_ratio[i]
         i+=1
         
@@ -132,45 +131,47 @@ def process(df, scaler="MinMax", pca_rep_offset=0.9, plot=False):
     # =============================================================================
     clustering_params = {
         ("KMeans", MiniBatchKMeans()) : {
-            "n_clusters" : range(2,50)
+            "n_clusters" : range(2,15)
         },
         
         ("AffinityPropagation", AffinityPropagation()) : {
               #"affinity": ["euclidean", "precomputed"], 
-              "preference": range(-5,-500, -10),     # -240 -220 -50
-              "damping" : np.linspace(0.5,1,100)       # [0.5-1]
+              "preference": range(5,-270, -20),     
+              "damping" : np.linspace(0.5,1,5)       # [0.5-1]
         },
         
         # bandwidth = estimate_bandwidth(X, quantile=0.2, n_samples=500)
         # ms = MeanShift(bandwidth=bandwidth, bin_seeding=True).fit(X)
         ("MeanShift", MeanShift()) : { 
+            "bandwidth" : [estimate_bandwidth(X, quantile=x) for x in np.linspace(0,1,10)]
             #"quantile" : np.linspace(0,1,11),   # [0-1] 
             #"n_sample" : range(2,500, 10)    # [1-all samples]
         },    
         
         ("SpectralClustering", SpectralClustering()) : {
-            "n_clusters" : range(2,50)},
+            "n_clusters" : range(2,15),
+            "n_neighbors" : range(2,50)},
         
         ("AgglomerativeClustering", AgglomerativeClustering()) : {   # If linkage is “ward”, only “euclidean” is accepted
             "linkage" : ["ward", "complete", "average", "single"],
             "affinity" : ["euclidean", "cityblock", "cosine"],
-            "n_clusters" : range(2,50)
+            "n_clusters" : range(2,15)
         },
         
         ("DBSCAN", DBSCAN()) : {
-            "eps" : np.linspace(0.1,50,20),        # 0.1-10
-            "min_samples" : range(2,200,5)   # 2-100 ?# on noisy and large data sets it may be desirable to increase this parameter
+            "eps" : np.linspace(0.1,10,10),        # 0.1-10
+            "min_samples" : range(2,200,50)   # 2-100 ?# on noisy and large data sets it may be desirable to increase this parameter
         },
         
         ("OPTICS", OPTICS()) : {
-            "min_samples" : np.linspace(0,1,50),          # or float [0-1]
+            "min_samples" : np.linspace(0,1,5),          # or float [0-1]
             "metric" : ["cityblock", "cosine", "euclidean", "manhattan"],
-            "xi" : np.linspace(0,1,100),                # [0-1]
-            #"min_cluster_size" : np.linspace(0,1,50)   # [0-1]
+            "xi" : np.linspace(0,1,5),                # [0-1]
+            "min_cluster_size" : np.linspace(0,1,5)   # [0-1]
         },
         
         ("Birch", Birch()) : {
-            "n_clusters" : range(2,50)
+            "n_clusters" : range(2,15)
         }
     }
     
@@ -187,9 +188,11 @@ def process(df, scaler="MinMax", pca_rep_offset=0.9, plot=False):
         
         # get reuslt as a df
         cv_result_df = pd.DataFrame(gs.cv_results_)
+        
+        s_results = "gridsearch_{}_{}_{}.csv".format(name, str(pca_rep_offset), scaler)
+        cv_result_df.to_csv(s_results)
+        
         # sort it by rank_test_score
-        
-        
         clustering_params[key]["best estimator"] = gs.best_estimator_
         clustering_params[key]["best params"] = gs.best_params_
         t1 = time.time()
@@ -197,9 +200,9 @@ def process(df, scaler="MinMax", pca_rep_offset=0.9, plot=False):
         print("Took {} time".format(t1-t0))
     
     print(clustering_params)
-    info_features = ['id', 'name','artists','year']
-    final_df = pd.concat([data[info_features], df[features], X], axis=1)    
-    final_df.to_csv("clusteredSongs.csv")
+    #info_features = ['id', 'name','artists','year']
+    #final_df = pd.concat([data[info_features], df[features], X], axis=1)    
+    #final_df.to_csv("clusteredSongs.csv")
     
     return (final_df, pca)
 
@@ -208,7 +211,16 @@ def main():
     data = open_csv("datasets\output\mySavedSongs.csv")
     
     
-    process(data, scaler="MinMax", pca_rep_offset=0.9, plot=True)
+    audio_features = ['danceability', 'energy', 'loudness',
+                  'speechiness', 'acousticness', 
+                'instrumentalness', 'liveness', 'valence', 'tempo']
+    
+    scalers = ["Standard", "MinMax", "MaxAbs", "RobustScaler"] # "QuantileTransformer", "PowerTransformer", 
+    pca_offsets = np.linspace(0.7,1,6)
+    
+    for scaler in scalers:
+        for pca_offset in pca_offsets:
+            process(data, scaler=scaler, pca_rep_offset=round(pca_offset,2), plot=False)
     #pass
 
 if __name__ == "__main__":
