@@ -38,10 +38,10 @@ def generate_clusters(scaler, features, pca_rep_offset=0.9, normalize=True, is_p
     data = analyse_refactor.open_csv("datasets\output\mySavedSongs.csv")
     all_data = analyse_refactor.open_csv("datasets\data.csv")
 
-    data[audio_features] = analyse_refactor.scale_numeric(data[audio_features], method=scale_method, features=audio_features, normalize=normalize)
-    all_X = analyse_refactor.scale_numeric(all_data[audio_features], method=scale_method , features=audio_features, normalize=normalize)
+    data[features] = analyse_refactor.scale_numeric(data[features], method=scale_method, features=features, normalize=normalize)
+    # all_X = analyse_refactor.scale_numeric(all_data[features], method=scale_method , features=features, normalize=normalize)
     
-    pca_df, pca = analyse_refactor.perform_pca(data[audio_features], len(features))
+    pca_df, pca = analyse_refactor.perform_pca(data[features], len(features))
     var_ratio = pca.explained_variance_ratio_
     
     # Select the number of componants based on an offset
@@ -55,13 +55,13 @@ def generate_clusters(scaler, features, pca_rep_offset=0.9, normalize=True, is_p
     
     cols = ["PCA_{}".format(j) for j in range(1,i+1)]
     X = pca_df[cols].copy() 
-    
+     
     reducer = umap.UMAP(
         n_neighbors= 5,          # the lower the value the higher the focus on local structure 
         min_dist=0.0,
         n_components=2,
         )
-    X = reducer.fit_transform(data[audio_features])
+    X = reducer.fit_transform(data[features])
     X = pd.DataFrame(X)
     
     
@@ -106,7 +106,7 @@ def generate_clusters(scaler, features, pca_rep_offset=0.9, normalize=True, is_p
     # append the clustering result to mySavedSongs
     X[name] = pd.Series(y_pred)
     
-    N = len(audio_features)
+    N = len(features)
     # What will be the angle of each axis in the plot? (we divide the plot / number of variable)
     angles = [n / float(N) * 2 * np.pi for n in range(N)]
     angles += angles[:1]
@@ -115,20 +115,25 @@ def generate_clusters(scaler, features, pca_rep_offset=0.9, normalize=True, is_p
     ax = plt.subplot(121, polar=True, )
     ax.set_theta_offset(np.pi / 2)
     ax.set_theta_direction(-1)
-    plt.xticks(angles[:-1], audio_features)
+    plt.xticks(angles[:-1], features)
     
     # Draw ylabels
     ax.set_rlabel_position(0)
     plt.yticks([0.3,0.5,0.7], [".3",".5",".7"], color="grey", size=7)
     plt.ylim(-1,2)
     
-    for c in sorted(X.loc[:,name].unique()):
+    clusters = sorted(X.loc[:,name].unique())
+    if -1 in clusters:
+        #clusters.remove(-1)
+        print("Non label songs found")
+                      
+    for c in clusters:
         # choose a random song from each cluster (random or by popularity)
         dd = pd.concat([data, X], axis=1)
         
         clustered_songs = dd[ dd[name] == c].sort_values(by="popularity", ascending=False)
         
-        values=clustered_songs[audio_features].mean().values.flatten().tolist()
+        values=clustered_songs[features].mean().values.flatten().tolist()
         values += values[:1]
         ax.plot(angles, values, linewidth=1, linestyle='solid', label=str(c))
         
@@ -151,9 +156,21 @@ def generate_clusters(scaler, features, pca_rep_offset=0.9, normalize=True, is_p
 def main():
     scaler = "MinMax"   # RobustScaler Standard MaxAbs QuantileTransformer PowerTransformer MinMax
     reduction = "UMAP"   
-    audio_features = ['danceability', 'energy', 'loudness',
-                  'speechiness', 'acousticness', 
-                'instrumentalness', 'liveness', 'valence', 'tempo']
+    
+    audio_features = ['danceability',       # Danceability describes how suitable a track is for dancing based on a combination of musical elements including tempo, rhythm stability, beat strength, and overall regularity. A value of 0.0 is least danceable and 1.0 is most danceable. 
+                  'energy',             # Energy is a measure from 0.0 to 1.0 and represents a perceptual measure of intensity and activity. 
+                  'loudness',           # The overall loudness of a track in decibels (dB). Loudness values are averaged across the entire track and are useful for comparing relative loudness of tracks. Loudness is the quality of a sound that is the primary psychological correlate of physical strength (amplitude). Values typical range between -60 and 0 db.
+                  #'speechiness',        # Speechiness detects the presence of spoken words in a track. The more exclusively speech-like the recording (e.g. talk show, audio book, poetry), the closer to 1.0 the attribute value. Values above 0.66 describe tracks that are probably made entirely of spoken words. Values between 0.33 and 0.66 describe tracks that may contain both music and speech, either in sections or layered, including such cases as rap music. Values below 0.33 most likely represent music and other non-speech-like tracks. 
+                  'acousticness',       # A confidence measure from 0.0 to 1.0 of whether the track is acoustic. 1.0 represents high confidence the track is acoustic.
+                  'instrumentalness',   # Predicts whether a track contains no vocals. “Ooh” and “aah” sounds are treated as instrumental in this context. Rap or spoken word tracks are clearly “vocal”. The closer the instrumentalness value is to 1.0, the greater likelihood the track contains no vocal content. Values above 0.5 are intended to represent instrumental tracks, but confidence is higher as the value approaches 1.0. 
+                  'liveness',           # Detects the presence of an audience in the recording. Higher liveness values represent an increased probability that the track was performed live. A value above 0.8 provides strong likelihood that the track is live.
+                  'valence',            # A measure from 0.0 to 1.0 describing the musical positiveness conveyed by a track.
+                  'tempo',              # The overall estimated tempo of a track in beats per minute (BPM).
+                  'duration_ms',        # The duration of the track in milliseconds.
+                  #'key',                # The estimated overall key of the track. Integers map to pitches using standard Pitch Class notation . E.g. 0 = C, 1 = C♯/D♭, 2 = D, and so on. If no key was detected, the value is -1.
+                  'mode',               # Mode indicates the modality (major or minor) of a track, the type of scale from which its melodic content is derived. Major is represented by 1 and minor is 0.
+                  'time_signature' ,    # An estimated overall time signature of a track. The time signature (meter) is a notational convention to specify how many beats are in each bar (or measure).
+                  ]
     
     spotify_helper.main()
     generate_clusters(scaler, features=audio_features, pca_rep_offset=0.95, normalize=False, is_playlist_created=True)

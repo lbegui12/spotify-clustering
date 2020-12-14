@@ -8,6 +8,7 @@ import sys
 
 import spotipy    # la librairie pour manipuler l'api spotify
 from spotipy.oauth2 import SpotifyOAuth
+from spotipy.oauth2 import SpotifyPKCE
 from spotipy.exceptions import SpotifyException
 
 from track import Track
@@ -24,10 +25,13 @@ class SpotifyHelper:
     def __init__(self):
         self.client_id = spotify_user_id
         self.client_secret = spotify_secret
-        self.sOAut = SpotifyOAuth(client_id=self.client_id,
-                                  client_secret=self.client_secret,
-                                  redirect_uri="http://localhost/",
-                                  scope="user-library-read playlist-modify-public")
+        self.sOAut = SpotifyOAuth(
+                                    client_id=self.client_id,
+                                    client_secret=self.client_secret,
+                                    redirect_uri="http://localhost/",
+                                    scope="user-library-read playlist-modify-public",
+                                    show_dialog=False
+                                )
         self.sp = spotipy.Spotify(auth_manager=self.sOAut)
         
     def get_user_saved_tracks(self, limit = 10, verbose = False):  
@@ -92,14 +96,15 @@ class SpotifyHelper:
 def main(args=None):
     cp = SpotifyHelper()
 
-    #p = cp.get_user_saved_tracks(limit=1066, verbose=False)
+    #p = cp.get_user_saved_tracks(limit=1066, verbose=True)
     #print("%d tracks in the playlist" % p.count)
     #data = p.playlist_to_df()
     #print(data.head())
-    #data.to_csv("datasets\output\mySavedSongs.csv", index=False)
+    #data.to_csv("datasets\output\mySavedSongs_{}.csv".format(spotify_user_id), index=False)
  
     to_remove = ["MiniBatchKMeans","AffinityPropagation", "Birch" ,"MeanShift", "OPTICS","Agglo","Spectral","DBSCAN"]
     response = cp.del_playlist_by_string(to_remove)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+    
